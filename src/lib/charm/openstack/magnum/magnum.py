@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import base64
 import collections
 import os
 
@@ -23,6 +24,7 @@ MAGNUM_CONF = os.path.join(MAGNUM_DIR, 'magnum.conf')
 MAGNUM_PASTE_API = os.path.join(MAGNUM_DIR, 'api-paste.ini')
 KEYSTONE_POLICY = os.path.join(MAGNUM_DIR, 'keystone_auth_default_policy.json')
 POLICY = os.path.join(MAGNUM_DIR, 'policy.json')
+CA_CERT_FILE = os.path.join(MAGNUM_DIR, 'cluster-nodes-ca.crt')
 VALID_NOTIFICATION_DRIVERS = [
     'messaging', 'messagingv2', 'routing', 'log', 'test', 'noop']
 
@@ -34,6 +36,30 @@ MAGNUM_SERVICES = [
 # select the default release function
 charms_openstack.charm.use_defaults('charm.default-select-release')
 
+def _allowed_drivers():
+    allowed_drivers = ch_hookenv.config().get(
+        'allowed-network-drivers')
+    if allowed_drivers:
+        asArray = allowed_drivers.split()
+        return asArray
+    return []
+
+
+@adapters.config_property
+def k8s_allowed_network_drivers(arg):
+    allowed_drivers = _allowed_drivers()
+    if len(allowed_drivers) > 0:
+        return ",".join(allowed_drivers)
+
+
+@adapters.config_property
+def k8s_default_network_driver(arg):
+    default_driver = ch_hookenv.config().get(
+        'default-network-driver')
+    allowed_drivers = _allowed_drivers()
+    if default_driver in allowed_drivers:
+        return default_driver
+
 
 @adapters.config_property
 def magnum_password(arg):
@@ -42,13 +68,42 @@ def magnum_password(arg):
         return passwd
 
 
+def default_ca_file_path():
+    pth = os.path.join(
+        ch_host.CA_CERT_DIR, "{}.crt".format(ch_hookenv.service_name()))
+    if os.path.exists(pth):
+        return pth
+    return None
+
+
+def _additional_ca():
+    ca = ch_hookenv.config().get('additional-ca-certs')
+    if ca:
+        decoded = base64.b64decode(ca)
+        return decoded
+    return None
+
+
 @adapters.config_property
 def ca_file_path(arg):
-    file_path = os.path.join(
-        ch_host.CA_CERT_DIR, "{}.crt".format(ch_hookenv.service_name()))
-    if os.path.exists(file_path):
-        return file_path
-    return ''
+    default_ca = default_ca_file_path()
+    additional_ca = _additional_ca()
+
+    if default_ca is None and additional_ca is None:
+        return ""
+
+    default_ca_contents = None
+    if default_ca:
+        with open(default_ca, 'rb') as f:
+            default_ca_contents = f.read()
+
+    with open(CA_CERT_FILE, 'wb') as f:
+        if default_ca_contents:
+            f.write(default_ca_contents)
+        if additional_ca:
+            f.write(additional_ca)
+
+    return CA_CERT_FILE
 
 
 @adapters.config_property

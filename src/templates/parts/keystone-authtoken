@@ -1,5 +1,5 @@
 {% if identity_service.auth_host -%}
-{% if identity_service.api_version and identity_service.api_version == "3" %}
+{% if identity_service.api_version and identity_service.api_version == 3 %}
 {% set auth_ver = "v3" %}
 {% else %}
 {% set auth_ver = "v2.0" %}

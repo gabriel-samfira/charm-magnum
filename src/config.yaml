@@ -79,3 +79,32 @@ options:
         * log
         * test
         * noop
+  allowed-network-drivers:
+    type: string
+    default: "calico flannel"
+    description: |
+      A space-separated list of network drivers that are allowed to be used by
+      clusters.
+  default-network-driver:
+    type: string
+    default: calico
+    description: |
+      The default network driver to use for clusters.
+  enforce-new-defaults:
+    type: boolean
+    default: true
+    description: |
+      This option controls whether or not to use old deprecated defaults when
+      evaluating policies. If ``True``, the old deprecated defaults are not going
+      to be evaluated. This means if any existing token is allowed for old defaults
+      but is disallowed for new defaults, it will be disallowed. It is encouraged
+      to enable this flag along with the ``enforce_scope`` flag so that you can get
+      the benefits of new defaults and ``scope_type`` together. If ``False``, the
+      deprecated policy check string is logically OR'd with the new policy check
+      string, allowing for a graceful upgrade experience between releases with new
+      policies, which is the default behavior.
+  additional-ca-certs:
+    default: ""
+    type: string
+    description: |
+      Additional CA certificates to send to cluster nodes.
